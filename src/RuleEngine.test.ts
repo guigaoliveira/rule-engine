@@ -1,4 +1,8 @@
-import index from './index'
+import RuleEngine from './RuleEngine'
+
+const actions = {
+  message: () => 'this is a message',
+}
 
 const ruleExample = {
   rule: {
@@ -27,9 +31,11 @@ const ruleExample = {
       },
     ],
   },
-  action: () => 'this is a rule',
+  action: 'message',
 }
 
 test('function that execute a rule', () => {
-  expect(index.executeRule(ruleExample)).toBe('this is a rule')
+  expect(new RuleEngine(actions).executeRule(ruleExample)).toBe(
+    'this is a message',
+  )
 })
