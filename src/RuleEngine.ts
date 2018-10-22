@@ -1,78 +1,101 @@
-import mem from 'mem'
+// import mem from 'mem'
 
-interface RuleOperations {
-  valueA: number
-  operator: string
-  valueB: number
+interface Facts {
+  [key: string]: number | undefined
 }
-
-interface RuleObject {
-  rule: {
-    and?: RuleOperations[]
-    or?: RuleOperations[]
-    [key: string]: RuleOperations[] | undefined
-  }
-  action: string
-}
-
-type functionOfOperation = (x1: number, x2: number) => boolean
 
 interface Operations {
-  [key: string]: (functionOfOperation) | undefined
+  [key: string]: (a: any, b: any) => boolean
 }
 
 interface Actions {
   [key: string]: () => any
 }
 
-const comparisonOperators: Operations = {
-  '==': (x1, x2) => x1 === x2,
-  '>=': (x1, x2) => x1 >= x2,
-  '>': (x1, x2) => x1 > x2,
-  '<=': (x1, x2) => x1 <= x2,
-  '<': (x1, x2) => x1 <= x2,
-  '!=': (x1, x2) => x1 !== x2,
+interface RuleOperations {
+  fact: string | number
+  operator: string
+  value: number
+  [key: string]: string | number | undefined
 }
 
-const makeLogicOperation = (rule: RuleOperations[], boolValue: boolean) =>
-  rule.some(({ valueA, valueB, operator }) => {
-    const makeOperation = comparisonOperators[operator]
-    if (!makeOperation) {
-      throw new Error('Comparation operator not exist.')
-    }
-    return makeOperation(valueA, valueB) === boolValue
-  })
+interface WhenObject {
+  all?: Conditions
+  any?: Conditions
+  not?: Conditions
+  [key: string]: Conditions | undefined
+}
+
+type Conditions = (RuleOperations | WhenObject)[]
+
+type logicValues = boolean | RuleOperations
+
+interface RuleFormat {
+  when: WhenObject
+  actions: string[]
+  [key: string]: string[] | WhenObject | undefined
+}
 
 class RuleEngine {
-  private allActions: Actions
-  MAX_AGE = 1000 * 60 * 60
+  facts: Facts
+  operations: Operations
+  actions: Actions
 
-  constructor(theActions = {}) {
-    this.allActions = theActions
+  constructor(facts: Facts, operations: Operations, actions: Actions) {
+    this.facts = facts
+    this.operations = operations
+    this.actions = actions
   }
 
-  processRule(ruleObj: RuleObject) {
-    const { rule, action } = ruleObj
-    const arrayOfResults = Object.keys(rule).map(key => {
-      const conditionInfo = rule[key]
-      if (conditionInfo && key === 'and') {
-        return !makeLogicOperation(conditionInfo, false)
-      }
-      if (conditionInfo && key === 'or') {
-        return makeLogicOperation(conditionInfo, true)
-      }
-      throw new Error('No logical operation were found')
-    })
-    const actionFunction = action && this.allActions[action]
-    if (!actionFunction) {
-      throw new Error(`Action not found: ${action}`)
+  execConditions(input: any): logicValues | number {
+    // console.log(input)
+    if (!this.facts || !this.operations || !this.actions) {
+      return -1 // err
     }
-    return !arrayOfResults.some(value => !value) && actionFunction()
+
+    const logicalArray = input.all || input.any || input.not
+
+    if (Array.isArray(logicalArray)) {
+      if (input.all) {
+        return !logicalArray.some(
+          (item: logicValues) => !this.execConditions(item),
+        )
+      }
+
+      if (input.any) {
+        return logicalArray.some(
+          (item: logicValues) => !!this.execConditions(item),
+        )
+      }
+
+      return !this.execConditions(logicalArray) // check if input.not has 'and' // 'or' props
+    }
+
+    const makeOperation = input.operator && this.operations[input.operator]
+
+    if (!makeOperation) {
+      return -1 // err
+    }
+
+    return makeOperation(this.facts[input.fact], input.value)
+    // err if the types of params are differents
   }
 
-  executeRule(ruleObj: RuleObject) {
-    return mem(obj => this.processRule(obj), { maxAge: this.MAX_AGE })(ruleObj)
+  execRule(ruleStructure: RuleFormat[]): boolean {
+    const ruleTriggered = ruleStructure.find(
+      item => this.execConditions(item.when) === true,
+    )
+
+    if (!ruleTriggered) return false
+
+    const ruleActionsTriggered = ruleTriggered.actions
+    for (const actionName of ruleActionsTriggered) {
+      const action = actionName && this.actions[actionName]
+      if (action) {
+        action()
+      }
+    }
+    return true
   }
 }
-
 export default RuleEngine

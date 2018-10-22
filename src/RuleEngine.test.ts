@@ -1,41 +1,43 @@
 import RuleEngine from './RuleEngine'
 
-const actions = {
-  message: () => 'this is a message',
+const rule = [
+  {
+    when: {
+      all: [
+        { fact: '$device1', operator: '==', value: 1 },
+        { fact: '$device2', operator: '==', value: 2 },
+        {
+          any: [
+            { fact: '$device3', operator: '>=', value: 3 },
+            { fact: '$device4', operator: '==', value: 2 },
+          ],
+        },
+      ],
+    },
+    actions: ['print'],
+  },
+]
+
+const facts = {
+  $device1: 1,
+  $device2: 2,
+  $device3: 3,
+  $device4: 4,
 }
 
-const ruleExample = {
-  rule: {
-    and: [
-      {
-        valueA: 2,
-        operator: '==',
-        valueB: 2,
-      },
-      {
-        valueA: 2,
-        operator: '==',
-        valueB: 2,
-      },
-    ],
-    or: [
-      {
-        valueA: 3,
-        operator: '==',
-        valueB: 5,
-      },
-      {
-        valueA: 3,
-        operator: '!=',
-        valueB: 5,
-      },
-    ],
-  },
-  action: 'message',
+const operations = {
+  '==': (a: number, b: number) => a === b,
+  '>': (a: number, b: number) => a > b,
+  '>=': (a: number, b: number) => a >= b,
+  '<': (a: number, b: number) => a < b,
+  '<=': (a: number, b: number) => a <= b,
+  '!=': (a: number, b: number) => a !== b,
+}
+
+const actions = {
+  print: () => 'this is a message',
 }
 
 test('function that execute a rule', () => {
-  expect(new RuleEngine(actions).executeRule(ruleExample)).toBe(
-    'this is a message',
-  )
+  expect(new RuleEngine(facts, operations, actions).execRule(rule)).toBe(true)
 })
