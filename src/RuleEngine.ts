@@ -22,8 +22,8 @@ interface RuleOperations {
 interface WhenObject {
   all?: Conditions
   any?: Conditions
-  not?: Conditions
-  [key: string]: Conditions | undefined
+  not?: RuleOperations | WhenObject
+  [key: string]: RuleOperations | WhenObject | Conditions | undefined
 }
 
 type Conditions = (RuleOperations | WhenObject)[]
@@ -34,6 +34,15 @@ interface RuleFormat {
   when: WhenObject
   actions: string[]
   [key: string]: string[] | WhenObject | undefined
+}
+
+type logicalMethods = (arr: RuleOperations[]) => boolean
+
+interface LogicalOperators {
+  all: logicalMethods
+  any: logicalMethods
+  not: logicalMethods
+  [key: string]: logicalMethods
 }
 
 class RuleEngine {
@@ -47,37 +56,41 @@ class RuleEngine {
     this.actions = actions
   }
 
-  execConditions(input: any): logicValues | number {
+  execLogicalOperations(logicOperation: string): logicalMethods {
+    const logicalOperators: LogicalOperators = {
+      all: arr => !arr.some(item => !this.execConditions(item)),
+      any: arr => arr.some(item => !!this.execConditions(item)),
+      not: arr => !this.execConditions(arr),
+    }
+    return logicalOperators[logicOperation]
+  }
+
+  execConditions(input: any): logicValues | number | boolean {
     // console.log(input)
     if (!this.facts || !this.operations || !this.actions) {
       return -1 // err
     }
 
-    const logicalArray = input.all || input.any || input.not
+    const logicOperation = input.all
+      ? 'all'
+      : input.any
+        ? 'any'
+        : input.not
+          ? 'not'
+          : false
 
-    if (Array.isArray(logicalArray)) {
-      if (input.all) {
-        return !logicalArray.some(
-          (item: logicValues) => !this.execConditions(item),
-        )
-      }
-
-      if (input.any) {
-        return logicalArray.some(
-          (item: logicValues) => !!this.execConditions(item),
-        )
-      }
-
-      return !this.execConditions(logicalArray) // check if input.not has 'and' // 'or' props
+    if (logicOperation) {
+      const conditions = input[logicOperation]
+      return this.execLogicalOperations(logicOperation)(conditions)
     }
 
-    const makeOperation = input.operator && this.operations[input.operator]
+    const createOperation = input.operator && this.operations[input.operator]
 
-    if (!makeOperation) {
+    if (!createOperation) {
       return -1 // err
     }
 
-    return makeOperation(this.facts[input.fact], input.value)
+    return createOperation(this.facts[input.fact], input.value)
     // err if the types of params are differents
   }
 

@@ -1,6 +1,6 @@
 import RuleEngine from './RuleEngine'
 
-const rule = [
+const rule1 = [
   {
     when: {
       all: [
@@ -8,8 +8,8 @@ const rule = [
         { fact: '$device2', operator: '==', value: 2 },
         {
           any: [
-            { fact: '$device3', operator: '>=', value: 3 },
-            { fact: '$device4', operator: '==', value: 2 },
+            { fact: '$device3', operator: '!=', value: 3 },
+            { fact: '$device4', operator: '!=', value: 4 },
           ],
         },
       ],
@@ -18,6 +18,25 @@ const rule = [
   },
 ]
 
+const rule2 = [
+  {
+    when: {
+      all: [
+        { fact: '$device1', operator: '==', value: 1 },
+        { fact: '$device2', operator: '==', value: 2 },
+        {
+          not: {
+            any: [
+              { fact: '$device3', operator: '!=', value: 3 },
+              { fact: '$device4', operator: '!=', value: 4 },
+            ],
+          },
+        },
+      ],
+    },
+    actions: ['print'],
+  },
+]
 const facts = {
   $device1: 1,
   $device2: 2,
@@ -38,6 +57,12 @@ const actions = {
   print: () => 'this is a message',
 }
 
-test('function that execute a rule', () => {
-  expect(new RuleEngine(facts, operations, actions).execRule(rule)).toBe(true)
+const ruleEngine = new RuleEngine(facts, operations, actions)
+
+test('it is expected that the actions will not be fired', () => {
+  expect(ruleEngine.execRule(rule1)).toBe(false)
+})
+
+test('it is expected that the actions will be fired', () => {
+  expect(ruleEngine.execRule(rule2)).toBe(true)
 })

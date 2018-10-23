@@ -3,7 +3,8 @@
   "extends": ["tslint-config-airbnb", "tslint-config-prettier"],
   "jsRules": {},
   "rules": {
-    "eofline": false
+    "eofline": false,
+    "no-boolean-literal-compare": false
   },
   "rulesDirectory": []
 }
