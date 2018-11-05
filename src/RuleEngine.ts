@@ -1,8 +1,6 @@
 // import mem from 'mem'
 
-interface Facts {
-  [key: string]: number | undefined
-}
+type Facts = (fact: string) => any
 
 interface Operations {
   [key: string]: (a: any, b: any) => boolean
@@ -28,8 +26,6 @@ interface WhenObject {
 
 type Conditions = (RuleOperations | WhenObject)[]
 
-type logicValues = boolean | RuleOperations
-
 interface RuleFormat {
   when: WhenObject
   actions: string[]
@@ -49,54 +45,48 @@ class RuleEngine {
   facts: Facts
   operations: Operations
   actions: Actions
-
   constructor(facts: Facts, operations: Operations, actions: Actions) {
     this.facts = facts
     this.operations = operations
     this.actions = actions
   }
 
-  execLogicalOperations(logicOperation: string): logicalMethods {
-    const logicalOperators: LogicalOperators = {
-      all: arr => !arr.some(item => !this.execConditions(item)),
-      any: arr => arr.some(item => !!this.execConditions(item)),
-      not: arr => !this.execConditions(arr),
-    }
-    return logicalOperators[logicOperation]
-  }
-
-  execConditions(input: any): logicValues | number | boolean {
+  execConditions(input: any): boolean {
     // console.log(input)
-    if (!this.facts || !this.operations || !this.actions) {
-      return -1 // err
-    }
-
     const logicOperation = input.all
       ? 'all'
       : input.any
         ? 'any'
         : input.not
           ? 'not'
-          : false
+          : ''
 
     if (logicOperation) {
       const conditions = input[logicOperation]
-      return this.execLogicalOperations(logicOperation)(conditions)
+      const logicalOperators: LogicalOperators = {
+        all: arr => !arr.some(item => !this.execConditions(item)),
+        any: arr => arr.some(item => this.execConditions(item)),
+        not: arr => !this.execConditions(arr),
+      }
+      return logicalOperators[logicOperation](conditions)
     }
 
     const createOperation = input.operator && this.operations[input.operator]
 
     if (!createOperation) {
-      return -1 // err
+      throw new Error('JSON format is wrong or the operation does not exist.')
     }
 
-    return createOperation(this.facts[input.fact], input.value)
+    return createOperation(this.facts(input.fact), input.value)
     // err if the types of params are differents
   }
 
   execRule(ruleStructure: RuleFormat[]): boolean {
-    const ruleTriggered = ruleStructure.find(
-      item => this.execConditions(item.when) === true,
+    if (!this.facts || !this.operations || !this.actions) {
+      throw new Error('Facts, operations and actions are required.')
+    }
+    const ruleTriggered = ruleStructure.find(item =>
+      this.execConditions(item.when),
     )
 
     if (!ruleTriggered) return false

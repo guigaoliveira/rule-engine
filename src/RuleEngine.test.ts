@@ -37,11 +37,19 @@ const rule2 = [
     actions: ['print'],
   },
 ]
-const facts = {
-  $device1: 1,
-  $device2: 2,
-  $device3: 3,
-  $device4: 4,
+
+interface Facts {
+  [key: string]: any
+}
+
+const facts = (factName: string) => {
+  const objectValue: Facts = {
+    $device1: 1,
+    $device2: 2,
+    $device3: 3,
+    $device4: 4,
+  }
+  return objectValue[factName]
 }
 
 const operations = {
